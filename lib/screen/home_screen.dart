@@ -1,107 +1,90 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_recognizer/common/component/ct_button.dart';
+import 'package:url_recognizer/common/component/ct_text.dart';
+import 'package:url_recognizer/common/component/ct_text_field.dart';
+import 'package:url_recognizer/common/const/ct_colors.dart';
+import 'package:url_recognizer/common/layout/ct_layout.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final controller = TextEditingController();
+  final singleController = TextEditingController();
+
+
+  @override
+  void initState() {
+    recognize();
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('버튼'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ElevatedButton(
-              onPressed: () {},
-              style: ButtonStyle(
-                // Material State
-                //
-                // hovered - 호버링 상태 (마우스 커서를 올려놓은상태)
-                // focused - 포커스 됐을때 (텍스트 필드)
-                // pressed - 눌렸을때 (o)
-                // dragged - 드래그 됐을때
-                // selected - 선택됐을때 (체크박스, 라디오 버튼)
-                // scrollUnder - 다른 컴포넌트 밑으로 스크롤링 됐을때
-                // disabled - 비활성화 됐을때 (o)
-                // error - 에러상태
-                backgroundColor: MaterialStateProperty.all(
-                  Colors.black,
-                ),
-                foregroundColor: MaterialStateProperty.resolveWith(
-                    (Set<MaterialState> states) {
-                  if (states.contains(MaterialState.pressed)) {
-                    return Colors.red;
-                  }
-
-                  return null;
-                }),
-                padding: MaterialStateProperty.resolveWith(
-                  (Set<MaterialState> states) {
-                    if(states.contains(MaterialState.pressed)){
-                      return EdgeInsets.all(100.0);
-                    }
-
-                    return EdgeInsets.all(20.0);
-                  },
-                ),
+    return CTLayout(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            children: [
+              CTButton(
+                color: CTColors.gray4,
+                paddingHor: 20,
+                onPressed: recognize,
+                child: CTText('카메라', size: 15),
               ),
-              child: Text(
-                'ButtonStyle',
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: CTTextField(type: CTTextFieldType.multiline, controller: singleController),
               ),
-            ),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                // 메인 칼라
-                primary: Colors.red,
-                // 글자 및 애니메이션 색깔
-                onPrimary: Colors.black,
-                // 그림자 색깔
-                shadowColor: Colors.green,
-                // 3D 입체감의 높이
-                elevation: 10.0,
-                textStyle: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 20.0,
-                ),
-                padding: EdgeInsets.all(32.0),
-                side: BorderSide(
-                  color: Colors.black,
-                  width: 4.0,
-                ),
+              CTButton(
+                color: CTColors.gray4,
+                paddingHor: 20,
+                onPressed: () async {
+                  print(singleController.text);
+                  Share.share(singleController.text);
+                },
+                child: CTText('카톡 공유', size: 15),
               ),
-              child: Text(
-                'ElevatedButton',
-              ),
-            ),
-            OutlinedButton(
-              onPressed: () {},
-              style: OutlinedButton.styleFrom(
-                primary: Colors.green,
-                backgroundColor: Colors.yellow,
-                elevation: 10.0,
-              ),
-              child: Text(
-                'OutlinedButton',
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(
-                primary: Colors.brown,
-                backgroundColor: Colors.blue,
-              ),
-              child: Text(
-                'TextButton',
-              ),
-            ),
-          ],
+              CTTextField(type: CTTextFieldType.multiline, controller: controller),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> recognize() async {
+    final XFile? photo = await ImagePicker().pickImage(source: ImageSource.camera);
+    if (photo == null) return;
+
+    final image = InputImage.fromFilePath(photo.path);
+    final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    final out = await textRecognizer.processImage(image);
+    final text = out.text;
+
+    controller.text = text;
+    final texts = text.split('\n');
+
+    setState(() {
+      final  url = texts.firstWhere((e) => e.startsWith('http'), orElse: () => '인식 불가');
+
+      singleController.text = url;
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    singleController.dispose();
+    super.dispose();
   }
 }
